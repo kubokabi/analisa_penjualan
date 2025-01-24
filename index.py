@@ -105,9 +105,14 @@ CORS(app)  # Mengizinkan semua origin untuk CORS. Bisa dibatasi untuk domain ter
 # Mengonfigurasi logging untuk mencatat informasi dan kesalahan
 logging.basicConfig(level=logging.INFO)
 
-@app.route('/upload', methods=['POST'])
+@app.route('/upload', methods=['POST', 'GET'])
 def upload_file():
-    # Memeriksa apakah ada file yang di-upload dalam request
+    if request.method == 'GET':
+        # Jika permintaan menggunakan metode GET, kirimkan respons default atau pesan
+        logging.info("GET request received. Returning default message.")
+        return jsonify({"message": "This API endpoint only accepts POST requests for file uploads."}), 405
+
+    # Jika metode POST, proses file upload
     if 'file' not in request.files:
         logging.error("No file uploaded.")
         return jsonify({"error": "No file uploaded"}), 400  # Jika tidak ada file yang di-upload, kirimkan error
