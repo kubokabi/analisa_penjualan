@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Upload CSV</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-KyZXEJ6Hk3o5tV34k5gvmQ3dV7rJq21l6G3k1UM6IjjS5tBxB6o5bmbmn5S63bjm"
+      crossorigin="anonymous"
+    />
+    <style>
+      body {
+        height: 100vh;
+        margin: 0;
+        position: relative;
+        font-family: "Arial", sans-serif;
+        overflow: hidden;
+      }
+
+      .container {
+        position: relative;
+        z-index: 1;
+        background-color: rgba(255, 255, 255, 0.9);
+        border-radius: 10px;
+        padding: 40px;
+        box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.1);
+        max-width: 500px;
+        margin: 100px auto;
+      }
+
+      h1 {
+        font-size: 36px;
+        color: #333;
+        margin-bottom: 20px;
+      }
+
+      .file-input-container {
+        border: 2px dotted #007bff;
+        padding: 20px;
+        text-align: center;
+        margin-bottom: 20px;
+        position: relative;
+      }
+
+      input[type="file"] {
+        display: none;
+      }
+
+      .file-label {
+        background-color: #007bff;
+        color: white;
+        padding: 10px 20px;
+        cursor: pointer;
+        border-radius: 5px;
+      }
+
+      .file-info {
+        margin-top: 15px;
+        padding: 10px;
+        background-color: #f8f9fa;
+        border: 1px solid #ddd;
+        display: none;
+      }
+
+      button {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        padding: 12px 25px;
+        border-radius: 5px;
+        width: 100%;
+        cursor: pointer;
+      }
+
+      button:hover {
+        background-color: #0056b3;
+      }
+
+      .form-control {
+        padding: 10px;
+        font-size: 16px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <h1>Upload CSV File</h1>
+      <form action="/upload" method="POST" enctype="multipart/form-data">
+        <div class="file-input-container">
+          <label for="file" class="file-label">Choose CSV file</label>
+          <input
+            type="file"
+            id="file"
+            name="file"
+            accept=".csv"
+            required
+            class="form-control"
+            onchange="showFileInfo(event)"
+          />
+          <div id="file-info" class="file-info">
+            <strong>File Name:</strong> <span id="file-name"></span><br />
+            <strong>File Size:</strong> <span id="file-size"></span> bytes<br />
+            <strong>File Type:</strong> <span id="file-type"></span>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Upload</button>
+      </form>
+    </div>
+
+    <script>
+      function showFileInfo(event) {
+        const file = event.target.files[0];
+        const fileInfoDiv = document.getElementById("file-info");
+        
+        if (file) {
+          document.getElementById("file-name").textContent = file.name;
+          document.getElementById("file-size").textContent = file.size;
+          document.getElementById("file-type").textContent = file.type;
+          fileInfoDiv.style.display = "block";
+        } else {
+          fileInfoDiv.style.display = "none";
+        }
+      }
+    </script>
+
+    <!-- Bootstrap JS -->
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-pzjw8f+ua7Kw1TIq0c2zL1/4g2ntbdTz3x3/8d6D2pp2YyVOg5xt7fv7cQpzi9er"
+      crossorigin="anonymous"
+    ></script>
+  </body>
+</html>
