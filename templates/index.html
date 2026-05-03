@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Web Scraping App</title>
+    <title>Kalkulator Sederhana</title>
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css"
       rel="stylesheet"
@@ -17,90 +17,181 @@
         position: relative;
         font-family: "Arial", sans-serif;
         overflow: hidden;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       }
 
       .container {
         position: relative;
         z-index: 1;
-        background-color: rgba(255, 255, 255, 0.9);
-        border-radius: 10px;
+        background-color: rgba(255, 255, 255, 0.95);
+        border-radius: 15px;
         padding: 40px;
-        box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.1);
-        max-width: 600px;
-        margin: 100px auto;
+        box-shadow: 0px 8px 25px rgba(0, 0, 0, 0.2);
+        max-width: 500px;
+        margin: 80px auto;
       }
 
       h1 {
-        font-size: 36px;
+        font-size: 32px;
         color: #333;
-        margin-bottom: 20px;
+        margin-bottom: 10px;
+        text-align: center;
+      }
+      
+      .subtitle {
+        text-align: center;
+        color: #666;
+        margin-bottom: 30px;
       }
 
       button {
-        background-color: #007bff;
+        background-color: #667eea;
         color: white;
         border: none;
         padding: 12px 25px;
         border-radius: 5px;
         width: 100%;
         cursor: pointer;
+        font-size: 18px;
+        font-weight: bold;
       }
 
       button:hover {
-        background-color: #0056b3;
+        background-color: #5568d3;
       }
 
       .form-control {
-        padding: 10px;
-        font-size: 16px;
+        padding: 12px;
+        font-size: 18px;
+        text-align: center;
       }
       
       .form-label {
         font-weight: bold;
         color: #555;
+        margin-bottom: 8px;
       }
       
-      .form-text {
-        color: #666;
-        font-size: 14px;
+      .result-box {
+        background-color: #f8f9fa;
+        border-radius: 10px;
+        padding: 20px;
+        margin-top: 20px;
+        text-align: center;
+      }
+      
+      .result-value {
+        font-size: 28px;
+        font-weight: bold;
+        color: #667eea;
+      }
+      
+      .error-box {
+        background-color: #f8d7da;
+        border-radius: 10px;
+        padding: 15px;
+        margin-top: 20px;
+        text-align: center;
+        color: #721c24;
+      }
+      
+      .operation-buttons {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+        margin: 20px 0;
+      }
+      
+      .operation-buttons input[type="radio"] {
+        display: none;
+      }
+      
+      .operation-buttons label {
+        background-color: #e9ecef;
+        padding: 15px;
+        border-radius: 8px;
+        text-align: center;
+        cursor: pointer;
+        font-size: 20px;
+        font-weight: bold;
+        transition: all 0.3s;
+      }
+      
+      .operation-buttons input[type="radio"]:checked + label {
+        background-color: #667eea;
+        color: white;
+        transform: scale(1.05);
+      }
+      
+      .operation-buttons label:hover {
+        background-color: #dee2e6;
       }
     </style>
   </head>
 
   <body>
     <div class="container">
-      <h1>Web Scraping Sederhana</h1>
-      <p class="mb-3">Masukkan URL website untuk mengambil data produk (Demo: books.toscrape.com)</p>
-      <form action="/scrape" method="POST">
+      <h1>🧮 Kalkulator Sederhana</h1>
+      <p class="subtitle">Masukkan dua angka dan pilih operasi</p>
+      
+      <form action="/calculate" method="POST">
         <div class="mb-3">
-          <label for="url" class="form-label">URL Website</label>
+          <label for="num1" class="form-label">Angka Pertama</label>
           <input
-            type="url"
-            id="url"
-            name="url"
-            placeholder="http://books.toscrape.com/"
+            type="number"
+            step="any"
+            id="num1"
+            name="num1"
+            placeholder="0"
             required
             class="form-control"
           />
-          <div class="form-text">
-            Aplikasi akan mencoba mengambil data judul, harga, dan rating buku.
+        </div>
+        
+        <div class="mb-3">
+          <label class="form-label">Pilih Operasi</label>
+          <div class="operation-buttons">
+            <input type="radio" id="add" name="operation" value="add" checked>
+            <label for="add">+</label>
+            
+            <input type="radio" id="subtract" name="operation" value="subtract">
+            <label for="subtract">−</label>
+            
+            <input type="radio" id="multiply" name="operation" value="multiply">
+            <label for="multiply">×</label>
+            
+            <input type="radio" id="divide" name="operation" value="divide">
+            <label for="divide">÷</label>
           </div>
         </div>
-        <button type="submit" class="btn btn-primary">Ambil Data</button>
+        
+        <div class="mb-3">
+          <label for="num2" class="form-label">Angka Kedua</label>
+          <input
+            type="number"
+            step="any"
+            id="num2"
+            name="num2"
+            placeholder="0"
+            required
+            class="form-control"
+          />
+        </div>
+        
+        <button type="submit" class="btn btn-primary">Hitung</button>
       </form>
       
-      {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-          <div class="mt-3">
-            {% for category, message in messages %}
-              <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-              </div>
-            {% endfor %}
-          </div>
-        {% endif %}
-      {% endwith %}
+      {% if result %}
+      <div class="result-box">
+        <div class="result-value">{{ result }}</div>
+      </div>
+      {% endif %}
+      
+      {% if error %}
+      <div class="error-box">
+        {{ error }}
+      </div>
+      {% endif %}
     </div>
 
     <!-- Bootstrap JS -->
