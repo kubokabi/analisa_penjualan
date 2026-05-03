@@ -1,130 +1,74 @@
-import matplotlib
-from matplotlib.ticker import FuncFormatter
-matplotlib.use('Agg')  # Menggunakan backend non-GUI agar Matplotlib dapat berjalan di server tanpa antarmuka grafis
-
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, render_template, request, redirect, url_for, flash
 import pandas as pd
-import matplotlib.pyplot as plt
-import io, base64
-from flask_cors import CORS
-import logging
+import requests
+from bs4 import BeautifulSoup
 
-# Inisialisasi aplikasi Flask dan aktifkan CORS
 app = Flask(__name__)
-CORS(app)  # Mengizinkan semua origin, namun bisa dibatasi untuk domain tertentu jika diperlukan
+app.secret_key = 'supersecretkey'
 
-# Konfigurasi logging untuk debugging dan pelaporan error
-logging.basicConfig(level=logging.INFO)
+# Fungsi untuk melakukan scraping (Contoh: Scraping daftar buku dari books.toscrape.com)
+def scrape_data(url):
+    try:
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        
+        soup = BeautifulSoup(response.content, 'html.parser')
+        data = []
+        
+        # Logika scraping spesifik untuk books.toscrape.com sebagai demo
+        products = soup.find_all('article', class_='product_pod')
+        
+        for product in products:
+            title = product.h3.a['title'] if product.h3 and product.h3.a else 'N/A'
+            price_elem = product.find('p', class_='price_color')
+            price = price_elem.text if price_elem else 'N/A'
+            avail_elem = product.find('p', class_='instock availability')
+            availability = avail_elem.text.strip() if avail_elem else 'N/A'
+            rating = product.p['class'][1] if product.p and len(product.p.get('class', [])) > 1 else 'No Rating'
+            
+            data.append({
+                'Judul': title,
+                'Harga': price,
+                'Ketersediaan': availability,
+                'Rating': rating
+            })
+            
+        return data, None
+    except Exception as e:
+        return None, str(e)
 
-# Route untuk menampilkan halaman upload file
 @app.route('/')
 def index():
-    return render_template('upload.html')  # Menampilkan formulir untuk mengunggah file
+    return render_template('index.html')
 
-# Route untuk menangani unggahan file
-@app.route('/upload', methods=['POST'])
-def upload_file():
-    # Periksa apakah file ada di request
-    if 'file' not in request.files:
-        logging.error("Tidak ada file yang diunggah.")
-        return jsonify({"error": "Tidak ada file yang diunggah"}), 400  # Jika tidak ada file yang diunggah
+@app.route('/scrape', methods=['POST'])
+def scrape():
+    url = request.form.get('url')
+    
+    if not url:
+        flash('URL wajib diisi!', 'danger')
+        return redirect(url_for('index'))
+    
+    # Default ke situs demo jika tidak valid
+    if not url.startswith('http'):
+        url = 'http://books.toscrape.com/'
 
-    file = request.files['file']
-
-    # Periksa apakah file yang diunggah berformat CSV
-    if not file.filename.endswith('.csv'):
-        logging.error("Format file tidak valid. Diharapkan file CSV.")
-        return jsonify({"error": "Format file tidak valid. Harap unggah file CSV."}), 400  # Jika file bukan CSV
-
-    try:
-        # Membaca file CSV ke dalam DataFrame pandas
-        df = pd.read_csv(file)
-
-        # Memastikan bahwa semua kolom yang dibutuhkan tersedia
-        required_columns = {'tanggal', 'produk', 'total_penjualan', 'jumlah_terjual', 'harga'}
-        if not required_columns.issubset(df.columns):
-            logging.error(f"Kolom yang dibutuhkan hilang. Kolom yang diperlukan: {required_columns}")
-            return jsonify({"error": f"Kolom hilang. Kolom yang diperlukan: {required_columns}"}), 400  # Jika kolom tidak lengkap
-
-        # Mengonversi kolom 'tanggal' ke format datetime
-        df['tanggal'] = pd.to_datetime(df['tanggal'], format='%Y-%m-%d', errors='coerce')
-        if df['tanggal'].isnull().any():  # Jika ada tanggal yang tidak valid
-            logging.error("Beberapa baris memiliki tanggal tidak valid di kolom 'tanggal'.")
-            return jsonify({"error": "Beberapa baris memiliki tanggal tidak valid di kolom 'tanggal'. Pastikan format tanggal adalah 'YYYY-MM-DD'."}), 400
-
-        # Menghapus baris dengan tanggal tidak valid
-        df = df.dropna(subset=['tanggal'])
-
-        # Menghapus duplikat berdasarkan 'tanggal' dan 'produk'
-        df = df.drop_duplicates(subset=['tanggal', 'produk'])
-
-        # Menghitung tren penjualan berdasarkan tanggal dan produk (fokus pada jumlah_terjual)
-        trend_sales = df.groupby(['tanggal', 'produk']).agg(
-            jumlah_terjual=('jumlah_terjual', 'sum'),
-            harga=('harga', 'mean')  # Menghitung rata-rata harga per produk
-        ).reset_index()
-
-        # Format data menjadi format ribuan
-        trend_sales['jumlah_terjual'] = trend_sales['jumlah_terjual'].apply(lambda x: f"{int(x):,}")
-        trend_sales['harga'] = trend_sales['harga'].apply(lambda x: f"{int(x):,}")
-
-        # Konversi data tren ke format dictionary setelah diformat
-        trend_data = trend_sales.to_dict(orient='records')
-
-        # Log data penjualan yang diformat untuk debugging
-        logging.info(f"Data Tren (diformat): {trend_data}")
-
-        # Menghitung produk dengan jumlah terjual tertinggi, tengah, dan terendah
-        total_sales_values = df.groupby('produk')['jumlah_terjual'].sum().to_dict()
-        highest_sale = max(total_sales_values.values())
-        lowest_sale = min(total_sales_values.values())
-        median_sale = pd.Series(total_sales_values.values()).median()
-
-        highest_product = [product for product, sales in total_sales_values.items() if sales == highest_sale]
-        lowest_product = [product for product, sales in total_sales_values.items() if sales == lowest_sale]
-        median_product = [product for product, sales in total_sales_values.items() if sales == median_sale]
-
-        # Membuat grafik tren jumlah terjual
-        plt.figure(figsize=(10, 5))
-        plt.plot(trend_sales['tanggal'], trend_sales['jumlah_terjual'].apply(lambda x: int(x.replace(",", ""))),
-                 marker='o', linestyle='-', color='b')
-
-        # Format sumbu y ke format ribuan
-        formatter = FuncFormatter(lambda x, _: f'{int(x):,}')
-        plt.gca().yaxis.set_major_formatter(formatter)
-
-        # Sesuaikan sumbu x untuk menampilkan nama produk dan tanggal
-        labels = [f"{row['produk']} ({row['tanggal'].strftime('%Y-%m-%d')})" for _, row in trend_sales.iterrows()]
-        plt.xticks(trend_sales['tanggal'], labels, rotation=45, ha='right')
-
-        plt.title('Tren Jumlah Terjual')
-        plt.xlabel('Produk dan Tanggal')
-        plt.ylabel('Jumlah Terjual')
-        plt.grid(True)
-
-        # Simpan grafik ke buffer dalam format PNG
-        img = io.BytesIO()
-        plt.savefig(img, format='png', bbox_inches='tight')  # bbox_inches='tight' untuk mengurangi ruang kosong
-        img.seek(0)
-        graph_url = base64.b64encode(img.getvalue()).decode()  # Konversi gambar ke string base64 untuk ditampilkan di HTML
-
-        # Tampilkan template hasil dengan data penjualan, grafik, dan analisis tren produk
-        return render_template('result.html', trend_data=trend_data,
-                               graph_url=f"data:image/png;base64,{graph_url}", highest_product=highest_product,
-                               lowest_product=lowest_product, median_product=median_product)
-
-    except pd.errors.EmptyDataError:
-        # Tangani jika file CSV kosong
-        logging.error("File CSV yang diunggah kosong.")
-        return jsonify({"error": "File CSV yang diunggah kosong."}), 400
-    except KeyError as e:
-        # Tangani jika kolom yang diperlukan hilang
-        logging.error(f"Kolom yang hilang: {e}")
-        return jsonify({"error": f"Kolom yang hilang: {e}"}), 400
-    except Exception as e:
-        # Tangani error lainnya yang tidak terduga
-        logging.error(f"Error tidak terduga: {e}")
-        return jsonify({"error": f"Terjadi error yang tidak terduga: {str(e)}"}), 500
+    data, error = scrape_data(url)
+    
+    if error:
+        flash(f'Gagal mengambil data: {error}', 'danger')
+        return redirect(url_for('index'))
+    
+    if not data:
+        flash('Tidak ada data yang ditemukan di URL tersebut.', 'warning')
+        return redirect(url_for('index'))
+    
+    df = pd.DataFrame(data)
+    table_data = df.to_dict(orient='records')
+    columns = df.columns.tolist()
+    
+    return render_template('result.html', data=table_data, columns=columns, source_url=url)
 
 if __name__ == '__main__':
-    app.run(debug=True)  # Jalankan aplikasi Flask dalam mode debug untuk pengembangan
+    app.run(debug=True, host='0.0.0.0', port=5000)
